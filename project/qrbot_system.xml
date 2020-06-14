@@ -1,0 +1,447 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/* Author: Anand Prakash */
+
+
+/* Global constant values */
+const int leader_bot_id          = 0;
+const int NUMBER_OF_FOLLOWERS    = 3;
+const int LEADER_BOT_OFFSET      = 0;
+const int MAX_LOGICAL_ID         = 99;
+
+/* Robot health info */
+const int VOLT_OPTIMUM           = 1;
+const int VOLT_BELOW_THRESHOLD   = 0;
+const int VOLT_CRITICAL          = -1;
+const int ALL_DEVICE_STAT_OK     = 1;
+const int ALL_DEVICE_STAT_NOK    = 0;
+const int DEVICE_CRITICAL        = -1;
+const int BOT_STATUS_GOOD        = 0;
+const int BOT_STATUS_AVG         = 1;
+const int BOT_STATUS_CRITICAL    = 2;
+
+/* Robot Kinematics */
+
+/* Physical Bot IDs of each bot */
+typedef int[1,NUMBER_OF_FOLLOWERS] fbid_t; 
+int bot_status[NUMBER_OF_FOLLOWERS + 1] = {BOT_STATUS_GOOD, BOT_STATUS_GOOD, BOT_STATUS_GOOD, BOT_STATUS_GOOD};
+int current_fbot_status = BOT_STATUS_CRITICAL;
+
+
+typedef struct
+{
+    int p_id; // Physical ID of the robot. This cannot be changed.
+    int l_id; // Logical ID of the robot assigned by master. It is configurable.
+} rmi;
+
+typedef struct
+{
+    int xpos;       // Position of the robot in x-direction.
+    int ypos;       // Position of the robot in y-direction.
+    int zpos;       // Position of the robot in z-direction.
+    int speed;      // Speed of the robot in m/s
+    int accl;       // Acceleration of the robot in m/s^2
+    int direction;  // Direction of the robot.
+} kin;
+
+kin leader_bot_config;
+
+typedef struct 
+{
+    int voltage;          // Voltage level of the robots
+    int all_dev_status;   // Component status of each robot.
+} bot_health_info;
+
+/* Master bot register to store the bot IDs of all the associated followers. 
+   Add by 1 to include leader bot.
+*/
+rmi master_bot_reg[NUMBER_OF_FOLLOWERS + 1];
+
+bot_health_info f_bot_health[NUMBER_OF_FOLLOWERS + 1];
+
+/* Synchronized events for regsitering the robots 
+   Added 1 to include the master bot 
+*/
+chan event_send_bot_info[NUMBER_OF_FOLLOWERS + 1], master_ack[NUMBER_OF_FOLLOWERS + 1], 
+        bot_sync[NUMBER_OF_FOLLOWERS + 1], fhealth[NUMBER_OF_FOLLOWERS + 1], fhealth_ack[NUMBER_OF_FOLLOWERS + 1],
+        request_health[NUMBER_OF_FOLLOWERS + 1], move_bot[NUMBER_OF_FOLLOWERS + 1];
+
+/* Global master registry index */
+int master_reg_index = 0;
+/* Robot count */
+int follower_bot_count = 0;
+
+void initializeMaster(int master_bot_id) {
+    master_bot_reg[LEADER_BOT_OFFSET].p_id = master_bot_id;
+    master_bot_reg[LEADER_BOT_OFFSET].l_id = MAX_LOGICAL_ID - master_bot_id;
+    master_reg_index++;
+}
+
+bool checkDuplicateEntry(fbid_t follower_id) {
+    int index = 0;
+    for(index = 0; index &lt; NUMBER_OF_FOLLOWERS + 1; index++) {
+        if(master_bot_reg[index].p_id == follower_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+void registerBotDetails(fbid_t follower_id) {
+    bool entryAvailable = checkDuplicateEntry(follower_id);
+    if (entryAvailable == false) {
+        master_bot_reg[master_reg_index].p_id = follower_id;
+        master_bot_reg[master_reg_index].l_id = MAX_LOGICAL_ID - follower_id;
+        master_reg_index++;
+        follower_bot_count++;
+    }
+}
+
+void sendBotHealthInfo(fbid_t follower_id, bot_health_info info) {
+    f_bot_health[follower_id].voltage = info.voltage;
+    f_bot_health[follower_id].all_dev_status = info.all_dev_status;
+}
+
+
+void verifyFollowerBotHealth(fbid_t f_id){
+    if ((f_bot_health[f_id].voltage == VOLT_OPTIMUM) &amp;&amp;
+                (f_bot_health[f_id].all_dev_status ==  ALL_DEVICE_STAT_OK)) {
+        bot_status[f_id] = BOT_STATUS_GOOD;
+    }
+    else if ((f_bot_health[f_id].voltage == VOLT_BELOW_THRESHOLD) || 
+                (f_bot_health[f_id].all_dev_status ==  ALL_DEVICE_STAT_NOK)) {
+        bot_status[f_id] = BOT_STATUS_AVG;
+    }
+    else {
+        bot_status[f_id] = BOT_STATUS_CRITICAL;
+    }
+}
+</declaration>
+	<template>
+		<name x="5" y="5">leader_bot</name>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id0" x="-1268" y="-187">
+			<name x="-1278" y="-221">ready</name>
+		</location>
+		<location id="id1" x="-681" y="-85">
+			<name x="-656" y="-94">register</name>
+		</location>
+		<location id="id2" x="-969" y="-187">
+			<name x="-1038" y="-238">wait_to_register_bot</name>
+		</location>
+		<location id="id3" x="-681" y="33">
+			<name x="-792" y="42">send_master</name>
+		</location>
+		<location id="id4" x="-367" y="33">
+			<name x="-348" y="25">rcv_health_data</name>
+		</location>
+		<location id="id5" x="-680" y="204">
+			<name x="-731" y="179">move</name>
+		</location>
+		<location id="id6" x="-680" y="348">
+			<name x="-722" y="365">distance_control</name>
+		</location>
+		<location id="id7" x="-850" y="263">
+			<name x="-909" y="246">align</name>
+		</location>
+		<location id="id8" x="-790" y="323">
+			<name x="-858" y="340">obstacle_detected</name>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id3"/>
+			<label kind="select" x="-637" y="119">fb_id : fbid_t</label>
+			<label kind="synchronisation" x="-637" y="136">request_health[fb_id]!</label>
+			<nail x="-646" y="153"/>
+			<nail x="-646" y="85"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id7"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id8"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id5"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id5"/>
+			<nail x="-595" y="340"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id5"/>
+			<nail x="-467" y="238"/>
+			<nail x="-518" y="323"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id2"/>
+			<label kind="select" x="-1147" y="-76">b_id : fbid_t</label>
+			<label kind="guard" x="-1147" y="-101">follower_bot_count &lt; 3</label>
+			<label kind="synchronisation" x="-1147" y="-50">event_send_bot_info[b_id]?</label>
+			<nail x="-1164" y="204"/>
+			<nail x="-1164" y="-110"/>
+			<nail x="-969" y="-110"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id5"/>
+			<label kind="select" x="-773" y="153">b_id : fbid_t</label>
+			<label kind="guard" x="-986" y="136">bot_status[b_id] !=BOT_STATUS_CRITICAL</label>
+			<label kind="synchronisation" x="-807" y="119">move_bot[b_id]!</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="select" x="-399" y="76">fb_id : fbid_t</label>
+			<label kind="synchronisation" x="-586" y="51">fhealth_ack[fb_id]!</label>
+			<label kind="assignment" x="-595" y="93">verifyFollowerBotHealth(fb_id)</label>
+			<nail x="-416" y="85"/>
+			<nail x="-620" y="85"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="select" x="-518" y="8">fb_id : fbid_t</label>
+			<label kind="synchronisation" x="-637" y="8">fhealth[fb_id]?</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id3"/>
+			<label kind="select" x="-909" y="93">fb_id :fbid_t</label>
+			<label kind="guard" x="-1003" y="42">follower_bot_count &lt;= 3</label>
+			<label kind="synchronisation" x="-935" y="59">bot_sync[fb_id]!</label>
+			<label kind="assignment" x="-1139" y="76">follower_bot_count = follower_bot_count + 1</label>
+			<nail x="-681" y="110"/>
+			<nail x="-817" y="110"/>
+			<nail x="-817" y="33"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-671" y="-42">follower_bot_count==3</label>
+			<label kind="assignment" x="-671" y="-59">follower_bot_count=0</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-911" y="-77">follower_bot_count &lt; 3</label>
+			<nail x="-970" y="-85"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<label kind="select" x="-1020" y="-280">b_id : fbid_t</label>
+			<label kind="synchronisation" x="-1071" y="-314">event_send_bot_info[b_id]?</label>
+			<nail x="-851" y="-238"/>
+			<nail x="-851" y="-289"/>
+			<nail x="-1089" y="-289"/>
+			<nail x="-1089" y="-238"/>
+			<nail x="-1072" y="-230"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="select" x="-671" y="-136">id : fbid_t</label>
+			<label kind="synchronisation" x="-673" y="-162">master_ack[id]!</label>
+			<label kind="assignment" x="-673" y="-187">registerBotDetails(id)</label>
+			<nail x="-681" y="-187"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="assignment" x="-1232" y="-212">initializeMaster(leader_bot_id)</label>
+		</transition>
+	</template>
+	<template>
+		<name>follower_bot</name>
+		<parameter>const fbid_t bot_id</parameter>
+		<declaration>// Place global declarations here for slave bot registry.
+
+clock reg;
+int attempt = 0;
+int associated_leader_l_id = -1;
+bot_health_info bh_info;
+
+rmi follower_bot_reg[NUMBER_OF_FOLLOWERS + 1];
+
+
+void associateMaster(int bot_index){
+    int index = 0;
+    for(index = 0; index &lt; NUMBER_OF_FOLLOWERS + 1; index++) {
+        follower_bot_reg[index].p_id = master_bot_reg[index].p_id;
+        follower_bot_reg[index].l_id = master_bot_reg[index].l_id;
+    }
+    /* 0th entry is for the master robot */
+    associated_leader_l_id = master_bot_reg[0].l_id;
+}
+
+
+
+void setBotHealthInfo() {
+    bh_info.voltage = VOLT_OPTIMUM;
+    bh_info.all_dev_status = ALL_DEVICE_STAT_OK;
+}
+
+
+</declaration>
+		<location id="id9" x="-493" y="-212">
+			<name x="-569" y="-221">start</name>
+			<label kind="invariant" x="-595" y="-204">reg &lt;= 1</label>
+		</location>
+		<location id="id10" x="-102" y="-212">
+			<name x="-85" y="-221">send_bot_data</name>
+			<label kind="invariant" x="-85" y="-238">reg &lt;=10</label>
+		</location>
+		<location id="id11" x="-102" y="-85">
+			<name x="-76" y="-93">synchronize_bots</name>
+		</location>
+		<location id="id12" x="-331" y="-85">
+			<name x="-391" y="-119">send_health_info</name>
+		</location>
+		<location id="id13" x="-561" y="-85">
+			<name x="-620" y="-119">get_health_info</name>
+		</location>
+		<location id="id14" x="-561" y="17">
+			<name x="-714" y="8">wait_for_health_ack</name>
+		</location>
+		<location id="id15" x="-331" y="17">
+			<name x="-314" y="8">wait_for_command</name>
+		</location>
+		<location id="id16" x="-331" y="144">
+			<name x="-450" y="119">move_followers</name>
+		</location>
+		<location id="id17" x="-102" y="-331">
+			<name x="-85" y="-340">registry_denied</name>
+		</location>
+		<location id="id18" x="42" y="144">
+			<name x="59" y="136">object_detected</name>
+		</location>
+		<location id="id19" x="42" y="255">
+			<name x="59" y="246">hover</name>
+		</location>
+		<location id="id20" x="-161" y="255">
+			<name x="-144" y="263">report</name>
+		</location>
+		<location id="id21" x="-654" y="144">
+			<name x="-807" y="127">obstacle_detected</name>
+		</location>
+		<location id="id22" x="-654" y="314">
+			<name x="-748" y="306">align_bot</name>
+		</location>
+		<init ref="id9"/>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id16"/>
+			<nail x="-212" y="297"/>
+			<nail x="-442" y="297"/>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id22"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id21"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id16"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id16"/>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id20"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id19"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id18"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-323" y="-42">request_health[bot_id]?</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-93" y="-280">attempt &gt; 5</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-323" y="68">move_bot[bot_id]?</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="-535" y="-8">fhealth_ack[bot_id]?</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-671" y="-51">fhealth[bot_id]!</label>
+			<label kind="assignment" x="-807" y="-34">sendBotHealthInfo(bot_id, bh_info)</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="assignment" x="-501" y="-76">setBotHealthInfo()</label>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-263" y="-110">bot_sync[bot_id]?</label>
+			<label kind="assignment" x="-289" y="-76">associateMaster(bot_id)</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-331" y="-289">attempt &lt; 5</label>
+			<label kind="assignment" x="-399" y="-289">reg = 0</label>
+			<nail x="-161" y="-263"/>
+			<nail x="-433" y="-263"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-85" y="-144">master_ack[bot_id]?</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="-391" y="-238">event_send_bot_info[bot_id]!</label>
+			<label kind="assignment" x="-323" y="-204">attempt++</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+
+// List one or more processes to be composed into a system.
+system follower_bot, leader_bot;
+    </system>
+	<queries>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>
