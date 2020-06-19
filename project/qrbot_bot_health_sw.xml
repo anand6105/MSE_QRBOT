@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/* Author: Anand Prakash */
+
+
+/* Global constant values */
+const int leader_bot_id          = 0;
+const int NO_OF_SLAVE_BOTS       = 3;
+const int LEADER_BOT_OFFSET      = 0;
+const int MAX_LOGICAL_ID         = 99;
+
+/* Robot health info */
+const int VOLT_OPTIMUM           = 1;
+const int VOLT_BELOW_THRESHOLD   = 0;
+const int VOLT_CRITICAL          = -1;
+const int ALL_DEVICE_STAT_OK     = 1;
+const int ALL_DEVICE_STAT_NOK    = 0;
+const int DEVICE_CRITICAL        = -1;
+const int BOT_STATUS_GOOD        = 0;
+const int BOT_STATUS_AVG         = 1;
+const int BOT_STATUS_CRITICAL    = 2;
+
+
+/* Physical Bot IDs of each bot */
+typedef int[1,NO_OF_SLAVE_BOTS ] fbid_t; 
+int bot_status[NO_OF_SLAVE_BOTS  + 1] = {BOT_STATUS_GOOD, BOT_STATUS_GOOD, BOT_STATUS_GOOD, BOT_STATUS_GOOD};
+int current_fbot_status = BOT_STATUS_CRITICAL;
+
+
+typedef struct
+{
+    int p_id; // Physical ID of the robot. This cannot be changed.
+    int l_id; // Logical ID of the robot assigned by master. It is configurable.
+} rmi;
+
+
+typedef struct 
+{
+    int voltage;          // Voltage level of the robots
+    int all_dev_status;   // Component status of each robot.
+} bot_health_info;
+
+/* Master bot register to store the bot IDs of all the associated followers. 
+   Add by 1 to include leader bot.
+*/
+rmi master_bot_reg[NO_OF_SLAVE_BOTS  + 1];
+
+bot_health_info f_bot_health[NO_OF_SLAVE_BOTS  + 1];
+
+int reg_bots = 3;
+int health_count = 0;
+
+/* Synchronized events for regsitering the robots 
+   Added 1 to include the master bot 
+*/
+chan response_health[NO_OF_SLAVE_BOTS  + 1], fhealth_ack[NO_OF_SLAVE_BOTS  + 1], request_health[NO_OF_SLAVE_BOTS  + 1],
+        reply[NO_OF_SLAVE_BOTS + 1], command[NO_OF_SLAVE_BOTS + 1];
+
+
+void sendBotHealthInfo(fbid_t follower_id, bot_health_info info) {
+    f_bot_health[follower_id].voltage = info.voltage;
+    f_bot_health[follower_id].all_dev_status = info.all_dev_status;
+}
+
+
+void verifyFollowerBotHealth(fbid_t f_id){
+    if ((f_bot_health[f_id].voltage == VOLT_OPTIMUM) &amp;&amp;
+                (f_bot_health[f_id].all_dev_status ==  ALL_DEVICE_STAT_OK)) {
+        bot_status[f_id] = BOT_STATUS_GOOD;
+    }
+    else if ((f_bot_health[f_id].voltage == VOLT_BELOW_THRESHOLD) || 
+                (f_bot_health[f_id].all_dev_status ==  ALL_DEVICE_STAT_NOK)) {
+        bot_status[f_id] = BOT_STATUS_AVG;
+    }
+    else {
+        bot_status[f_id] = BOT_STATUS_CRITICAL;
+    }
+}
+</declaration>
+	<template>
+		<name x="5" y="5">health_monitor</name>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id0" x="-1334" y="-136">
+			<name x="-1411" y="-144">active</name>
+		</location>
+		<location id="id1" x="-1020" y="-136">
+			<name x="-986" y="-145">request_sent</name>
+		</location>
+		<location id="id2" x="-1020" y="-17">
+			<name x="-994" y="-25">health_data_received</name>
+		</location>
+		<location id="id3" x="-1173" y="93">
+			<name x="-1232" y="119">analyze_health_data</name>
+		</location>
+		<location id="id4" x="-1334" y="-8">
+			<name x="-1394" y="-17">reset</name>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id0"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="select" x="-1351" y="51">bot_id : fbid_t</label>
+			<label kind="synchronisation" x="-1385" y="76">fhealth_ack[bot_id]!</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="select" x="-1105" y="68">id : fbid_t</label>
+			<label kind="assignment" x="-1105" y="51">verifyFollowerBotHealth(id)</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="select" x="-1003" y="-76">f_id : fbid_t</label>
+			<label kind="synchronisation" x="-1003" y="-102">response_health[f_id]?</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="select" x="-1241" y="-127">bot_id : fbid_t</label>
+			<label kind="synchronisation" x="-1266" y="-161">request_health[bot_id]!</label>
+		</transition>
+	</template>
+	<template>
+		<name>slave_health</name>
+		<parameter>const fbid_t bot_id</parameter>
+		<declaration>// Place global declarations here for slave bot registry.
+
+clock reg;
+int attempt = 0;
+int associated_leader_l_id = 99;
+bot_health_info bh_info;
+
+rmi follower_bot_reg[NO_OF_SLAVE_BOTS  + 1];
+
+void setBotHealthInfo() {
+    bh_info.voltage = VOLT_OPTIMUM;
+    bh_info.all_dev_status = ALL_DEVICE_STAT_OK;
+}
+
+
+</declaration>
+		<location id="id5" x="-118" y="136">
+			<name x="-135" y="162">ready</name>
+		</location>
+		<location id="id6" x="-314" y="-93">
+			<name x="-501" y="-101">accumulate_health_data</name>
+		</location>
+		<location id="id7" x="94" y="-93">
+			<name x="84" y="-127">wait_for_health_ack</name>
+		</location>
+		<init ref="id5"/>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="0" y="18">fhealth_ack[bot_id]?</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="-203" y="-84">response_health[bot_id]!</label>
+			<label kind="assignment" x="-229" y="-118">sendBotHealthInfo(bot_id, bh_info)</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-399" y="9">request_health[bot_id]?</label>
+			<label kind="assignment" x="-365" y="26">setBotHealthInfo()</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+
+// List one or more processes to be composed into a system.
+system health_monitor, slave_health;
+    </system>
+	<queries>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

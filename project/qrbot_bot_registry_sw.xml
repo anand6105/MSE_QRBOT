@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>/* Author: Anand Prakash */
+
+
+/* Global constant values */
+const int leader_bot_id          = 0;
+const int NO_OF_SLAVE_BOTS       = 3;
+const int LEADER_BOT_OFFSET      = 0;
+const int MAX_LOGICAL_ID         = 99;
+
+
+
+/* Physical Bot IDs of each bot */
+typedef int[1,NO_OF_SLAVE_BOTS] fbid_t; 
+
+
+typedef struct
+{
+    int p_id; // Physical ID of the robot. This cannot be changed.
+    int l_id; // Logical ID of the robot assigned by master. It is configurable.
+} rmi;
+
+/* Master bot register to store the bot IDs of all the associated followers. 
+   Add by 1 to include leader bot.
+*/
+rmi master_bot_reg[NO_OF_SLAVE_BOTS + 1];
+
+/* Synchronized events for regsitering the robots 
+   Added 1 to include the master bot 
+*/
+chan event_send_bot_info[NO_OF_SLAVE_BOTS + 1], master_ack[NO_OF_SLAVE_BOTS + 1], 
+        bot_sync[NO_OF_SLAVE_BOTS + 1], move_bot[NO_OF_SLAVE_BOTS + 1],
+        response[NO_OF_SLAVE_BOTS + 1], command[NO_OF_SLAVE_BOTS + 1];
+
+/* Global master registry index */
+int master_reg_index = 0;
+/* Robot count */
+int reg_bots = 0;
+int bot_in_sync = 0;
+int bot_in_motion = 0;
+
+void initializeMaster(int master_bot_id) {
+    master_bot_reg[LEADER_BOT_OFFSET].p_id = master_bot_id;
+    master_bot_reg[LEADER_BOT_OFFSET].l_id = MAX_LOGICAL_ID - master_bot_id;
+    master_reg_index++;
+}
+
+bool checkDuplicateEntry(fbid_t follower_id) {
+    int index = 0;
+    for(index = 0; index &lt; NO_OF_SLAVE_BOTS + 1; index++) {
+        if(master_bot_reg[index].p_id == follower_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void setBotInMotion(){
+    bot_in_motion++;
+}
+
+
+void registerBotDetails(fbid_t follower_id) {
+    bool entryAvailable = checkDuplicateEntry(follower_id);
+    if (entryAvailable == false) {
+        master_bot_reg[master_reg_index].p_id = follower_id;
+        master_bot_reg[master_reg_index].l_id = MAX_LOGICAL_ID - follower_id;
+        master_reg_index++;
+        reg_bots++;
+    }
+}
+</declaration>
+	<template>
+		<name x="5" y="5">master_registry</name>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id0" x="-1268" y="-187">
+			<name x="-1278" y="-221">ready</name>
+		</location>
+		<location id="id1" x="-681" y="-85">
+			<name x="-656" y="-94">register_bots</name>
+		</location>
+		<location id="id2" x="-969" y="-187">
+			<name x="-1038" y="-238">wait_to_register_bot</name>
+		</location>
+		<location id="id3" x="-681" y="33">
+			<name x="-663" y="8">sync_bots</name>
+		</location>
+		<location id="id4" x="-986" y="34">
+			<name x="-1113" y="8">send_command</name>
+		</location>
+		<location id="id5" x="-986" y="187">
+			<name x="-1037" y="204">reply_from_slave</name>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id4"/>
+			<label kind="select" x="-1139" y="136">fb_id :fbid_t</label>
+			<label kind="synchronisation" x="-1173" y="110">response[fb_id]?</label>
+			<nail x="-1054" y="136"/>
+			<nail x="-1054" y="93"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="select" x="-943" y="170">fb_id :fbid_t</label>
+			<label kind="guard" x="-977" y="136">bot_in_motion == bot_in_sync</label>
+			<label kind="synchronisation" x="-977" y="153">command[fb_id]!</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-926" y="110">bot_in_motion != bot_in_sync</label>
+			<nail x="-943" y="102"/>
+			<nail x="-722" y="102"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id2"/>
+			<label kind="select" x="-1147" y="-76">b_id : fbid_t</label>
+			<label kind="guard" x="-1147" y="-25">reg_bots != NO_OF_SLAVE_BOTS</label>
+			<label kind="synchronisation" x="-1147" y="-50">event_send_bot_info[b_id]?</label>
+			<nail x="-1164" y="34"/>
+			<nail x="-1164" y="-110"/>
+			<nail x="-969" y="-110"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="select" x="-807" y="8">b_id : fbid_t</label>
+			<label kind="guard" x="-909" y="42">reg_bots == bot_in_sync</label>
+			<label kind="synchronisation" x="-943" y="8">move_bot[b_id]!</label>
+			<label kind="assignment" x="-884" y="59">setBotInMotion()</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id3"/>
+			<label kind="select" x="-450" y="93">fb_id :fbid_t</label>
+			<label kind="guard" x="-450" y="59">reg_bots != bot_in_sync</label>
+			<label kind="synchronisation" x="-450" y="76">bot_sync[fb_id]!</label>
+			<label kind="assignment" x="-450" y="42">bot_in_sync = bot_in_sync + 1</label>
+			<nail x="-680" y="110"/>
+			<nail x="-459" y="110"/>
+			<nail x="-459" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-671" y="-42">reg_bots == NO_OF_SLAVE_BOTS</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-943" y="-68">reg_bots != NO_OF_SLAVE_BOTS</label>
+			<nail x="-970" y="-85"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<label kind="select" x="-1020" y="-280">b_id : fbid_t</label>
+			<label kind="synchronisation" x="-1071" y="-314">event_send_bot_info[b_id]?</label>
+			<nail x="-851" y="-238"/>
+			<nail x="-851" y="-289"/>
+			<nail x="-1089" y="-289"/>
+			<nail x="-1089" y="-238"/>
+			<nail x="-1072" y="-230"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="select" x="-671" y="-136">id : fbid_t</label>
+			<label kind="synchronisation" x="-673" y="-162">master_ack[id]!</label>
+			<label kind="assignment" x="-673" y="-187">registerBotDetails(id)</label>
+			<nail x="-681" y="-187"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="assignment" x="-1232" y="-212">initializeMaster(leader_bot_id)</label>
+		</transition>
+	</template>
+	<template>
+		<name>slave_registry</name>
+		<parameter>const fbid_t bot_id</parameter>
+		<declaration>// Place global declarations here for slave bot registry.
+
+clock reg;
+int attempt = 0;
+int associated_leader_l_id = -1;
+
+rmi follower_bot_reg[NO_OF_SLAVE_BOTS + 1];
+
+
+void associateMaster(int bot_index){
+    int index = 0;
+    for(index = 0; index &lt; NO_OF_SLAVE_BOTS + 1; index++) {
+        follower_bot_reg[index].p_id = master_bot_reg[index].p_id;
+        follower_bot_reg[index].l_id = master_bot_reg[index].l_id;
+    }
+    /* 0th entry is for the master robot */
+    associated_leader_l_id = master_bot_reg[0].l_id;
+}
+
+
+
+</declaration>
+		<location id="id6" x="-646" y="-93">
+			<name x="-705" y="-102">start</name>
+		</location>
+		<location id="id7" x="-255" y="-93">
+			<name x="-238" y="-102">register</name>
+		</location>
+		<location id="id8" x="-255" y="34">
+			<name x="-229" y="26">synchronize_bots</name>
+		</location>
+		<location id="id9" x="-535" y="34">
+			<name x="-663" y="25">assign_master</name>
+		</location>
+		<location id="id10" x="-255" y="-187">
+			<name x="-238" y="-196">registry_denied</name>
+		</location>
+		<location id="id11" x="-535" y="195">
+			<name x="-586" y="220">reply_to_master</name>
+		</location>
+		<location id="id12" x="-535" y="93">
+			<name x="-663" y="85">master_request</name>
+		</location>
+		<init ref="id6"/>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-467" y="127">response[bot_id]!</label>
+			<nail x="-476" y="161"/>
+			<nail x="-476" y="119"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-671" y="127">command[bot_id]?</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-671" y="51">move_bot[bot_id]?</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-246" y="-161">attempt &gt; 5</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="-450" y="8">bot_sync[bot_id]?</label>
+			<label kind="assignment" x="-467" y="42">associateMaster(bot_id)</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-484" y="-170">attempt &lt; 5</label>
+			<nail x="-314" y="-144"/>
+			<nail x="-586" y="-144"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-246" y="-42">master_ack[bot_id]?</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="-544" y="-119">event_send_bot_info[bot_id]!</label>
+			<label kind="assignment" x="-476" y="-85">attempt++</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+
+// List one or more processes to be composed into a system.
+system master_registry, slave_registry;
+    </system>
+	<queries>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

@@ -318,7 +318,7 @@ void setBotHealthInfo() {
 			<name x="-714" y="8">wait_for_health_ack</name>
 		</location>
 		<location id="id15" x="-331" y="17">
-			<name x="-314" y="8">wait_for_command</name>
+			<name x="-476" y="25">wait_for_command</name>
 		</location>
 		<location id="id16" x="-331" y="144">
 			<name x="-450" y="119">move_followers</name>
@@ -335,13 +335,25 @@ void setBotHealthInfo() {
 		<location id="id20" x="-161" y="255">
 			<name x="-144" y="263">report</name>
 		</location>
-		<location id="id21" x="-654" y="144">
-			<name x="-807" y="127">obstacle_detected</name>
+		<location id="id21" x="-671" y="144">
+			<name x="-824" y="127">obstacle_detected</name>
 		</location>
-		<location id="id22" x="-654" y="314">
-			<name x="-748" y="306">align_bot</name>
+		<location id="id22" x="-671" y="255">
+			<name x="-765" y="247">align_bot</name>
 		</location>
 		<init ref="id9"/>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-263" y="25">request_health[bot_id]?</label>
+			<nail x="-272" y="93"/>
+			<nail x="-272" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id16"/>
+			<nail x="-535" y="255"/>
+		</transition>
 		<transition>
 			<source ref="id16"/>
 			<target ref="id16"/>
@@ -355,10 +367,6 @@ void setBotHealthInfo() {
 		<transition>
 			<source ref="id16"/>
 			<target ref="id21"/>
-		</transition>
-		<transition>
-			<source ref="id22"/>
-			<target ref="id16"/>
 		</transition>
 		<transition>
 			<source ref="id20"/>
@@ -377,11 +385,6 @@ void setBotHealthInfo() {
 			<target ref="id18"/>
 		</transition>
 		<transition>
-			<source ref="id15"/>
-			<target ref="id12"/>
-			<label kind="synchronisation" x="-323" y="-42">request_health[bot_id]?</label>
-		</transition>
-		<transition>
 			<source ref="id10"/>
 			<target ref="id17"/>
 			<label kind="guard" x="-93" y="-280">attempt &gt; 5</label>
@@ -389,7 +392,7 @@ void setBotHealthInfo() {
 		<transition>
 			<source ref="id15"/>
 			<target ref="id16"/>
-			<label kind="synchronisation" x="-323" y="68">move_bot[bot_id]?</label>
+			<label kind="synchronisation" x="-467" y="68">move_bot[bot_id]?</label>
 		</transition>
 		<transition>
 			<source ref="id14"/>
