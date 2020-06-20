@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+
+const int no_of_bots = 2;
+
+/* Physical Bot IDs of each bot */
+const int bot1_leader_id = 0;
+const int bot1_follower_id = 1;
+const int bot2_leader_id = 1;
+const int bot2_follower_id = 0;
+
+
+broadcast chan move_bots[no_of_bots], follow_bots[no_of_bots], mission_complete;
+broadcast chan begin[no_of_bots], survey_area[no_of_bots], wait[no_of_bots], find[no_of_bots];
+chan requestPosition, position, requestHealth, health, survey_done, target_position;</declaration>
+	<template>
+		<name>scan_role</name>
+		<parameter>const int l_id</parameter>
+		<declaration>// Place local declarations here.
+clock t;</declaration>
+		<location id="id0" x="-238" y="-42">
+			<name x="-272" y="-25">start_scan</name>
+		</location>
+		<location id="id1" x="-8" y="-42">
+			<name x="-42" y="-25">send_data</name>
+			<label kind="invariant" x="17" y="-51">t &lt;= 60</label>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-187" y="-153">t &gt; 40</label>
+			<label kind="synchronisation" x="-187" y="-136">mission_complete!</label>
+			<label kind="assignment" x="-119" y="-153">t := 0</label>
+			<nail x="-59" y="-110"/>
+			<nail x="-187" y="-110"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-153" y="-25">find[l_id]?</label>
+			<label kind="assignment" x="-144" y="-59">t := 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">leader_role</name>
+		<parameter>const int l_id</parameter>
+		<declaration>// Place local declarations here.
+clock t;</declaration>
+		<location id="id2" x="-1054" y="-93">
+			<name x="-1156" y="-102">in_motion</name>
+		</location>
+		<location id="id3" x="-816" y="-93">
+			<name x="-867" y="-68">follower_location</name>
+			<label kind="invariant" x="-807" y="-85">t &lt;= 5</label>
+		</location>
+		<location id="id4" x="-816" y="-212">
+			<name x="-960" y="-221">follower_position</name>
+		</location>
+		<location id="id5" x="-620" y="-212">
+			<name x="-603" y="-221">rcv_position</name>
+			<label kind="invariant" x="-637" y="-246">t &lt;= 5</label>
+		</location>
+		<location id="id6" x="-620" y="-85">
+			<name x="-603" y="-93">follower_health</name>
+		</location>
+		<location id="id7" x="-620" y="34">
+			<name x="-637" y="51">survey</name>
+			<label kind="invariant" x="-595" y="25">t &lt;= 70</label>
+		</location>
+		<init ref="id2"/>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-986" y="8">t &gt; 60</label>
+			<label kind="synchronisation" x="-926" y="8">survey_area[l_id]!</label>
+			<label kind="assignment" x="-875" y="42">t := 0</label>
+			<nail x="-1054" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="-680" y="-34">health?</label>
+			<label kind="assignment" x="-671" y="-51">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-612" y="-161">t &gt; 2</label>
+			<label kind="synchronisation" x="-731" y="-144">requestHealth!</label>
+			<label kind="assignment" x="-612" y="-144">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-756" y="-238">position?</label>
+			<label kind="assignment" x="-739" y="-204">t := 0</label>
+			<nail x="-782" y="-212"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-867" y="-187">t &gt; 2</label>
+			<label kind="synchronisation" x="-943" y="-161">requestPosition!</label>
+			<label kind="assignment" x="-867" y="-144">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-986" y="-85">begin[l_id]?</label>
+			<label kind="assignment" x="-969" y="-119">t := 0</label>
+		</transition>
+	</template>
+	<template>
+		<name>coordinate</name>
+		<parameter>const int l_id</parameter>
+		<declaration>// Place local declarations here.
+clock t;</declaration>
+		<location id="id8" x="-867" y="-229">
+			<name x="-875" y="-212">ready</name>
+		</location>
+		<location id="id9" x="-1130" y="-229">
+			<name x="-1147" y="-212">move</name>
+		</location>
+		<location id="id10" x="-612" y="-229">
+			<name x="-629" y="-212">follow</name>
+		</location>
+		<location id="id11" x="-1130" y="-331">
+			<name x="-1173" y="-365">follower_info</name>
+		</location>
+		<location id="id12" x="-867" y="-374">
+			<name x="-892" y="-408">detect</name>
+		</location>
+		<location id="id13" x="-952" y="-331">
+			<name x="-986" y="-365">start_survey</name>
+		</location>
+		<location id="id14" x="-612" y="-374">
+			<name x="-663" y="-408">wait_for_leader</name>
+		</location>
+		<init ref="id8"/>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-782" y="-391">find[l_id]?</label>
+			<label kind="assignment" x="-773" y="-365">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-595" y="-289">wait[l_id]?</label>
+			<label kind="assignment" x="-595" y="-314">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-1003" y="-280">survey_done?</label>
+			<label kind="assignment" x="-977" y="-297">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-1105" y="-323">survey_area[l_id]?</label>
+			<label kind="assignment" x="-1071" y="-357">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-850" y="-306">mission_complete?</label>
+			<label kind="assignment" x="-850" y="-323">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-1215" y="-289">begin[l_id]?</label>
+			<label kind="assignment" x="-1181" y="-272">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="-790" y="-212">follow_bots[l_id]?</label>
+			<label kind="assignment" x="-756" y="-178">t := 0</label>
+			<nail x="-799" y="-187"/>
+			<nail x="-671" y="-187"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="-1062" y="-212">move_bots[l_id]?</label>
+			<label kind="assignment" x="-1028" y="-178">t := 0</label>
+			<nail x="-935" y="-187"/>
+			<nail x="-1071" y="-187"/>
+		</transition>
+	</template>
+	<template>
+		<name>survey_role</name>
+		<parameter>const int l_id</parameter>
+		<declaration>// Place local declarations here.
+clock t;</declaration>
+		<location id="id15" x="-212" y="-8">
+			<name x="-323" y="-17">start_survey</name>
+		</location>
+		<location id="id16" x="51" y="-8">
+			<name x="76" y="-17">locate_target_area</name>
+			<label kind="invariant" x="41" y="9">t &lt;= 60</label>
+		</location>
+		<location id="id17" x="-102" y="-212">
+			<name x="-187" y="-246">set_follower_target_position</name>
+			<label kind="invariant" x="-76" y="-221">t &lt;= 20</label>
+		</location>
+		<init ref="id15"/>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-221" y="-136">t &gt; 10</label>
+			<label kind="synchronisation" x="-280" y="-153">target_position!</label>
+			<label kind="assignment" x="-221" y="-119">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="guard" x="0" y="-127">t &gt; 40</label>
+			<label kind="synchronisation" x="0" y="-102">survey_done!</label>
+			<label kind="assignment" x="59" y="-127">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-144" y="-34">survey_area[l_id]?</label>
+			<label kind="assignment" x="-110" y="0">t := 0</label>
+		</transition>
+	</template>
+	<template>
+		<name>follower_role</name>
+		<parameter>const int l_id</parameter>
+		<declaration>// Place local declarations here.
+clock t;</declaration>
+		<location id="id18" x="-1216" y="-1334">
+			<name x="-1250" y="-1309">in_motion</name>
+		</location>
+		<location id="id19" x="-1029" y="-1436">
+			<name x="-1003" y="-1453">wait_for_master</name>
+		</location>
+		<location id="id20" x="-1029" y="-1597">
+			<name x="-1165" y="-1605">get_bot_position</name>
+			<label kind="invariant" x="-1003" y="-1606">t &lt;= 5</label>
+		</location>
+		<location id="id21" x="-1029" y="-1682">
+			<name x="-1003" y="-1691">position_sent</name>
+		</location>
+		<location id="id22" x="-1369" y="-1682">
+			<name x="-1471" y="-1691">health_data</name>
+			<label kind="invariant" x="-1428" y="-1708">t &lt;= 5</label>
+		</location>
+		<location id="id23" x="-1369" y="-1597">
+			<name x="-1513" y="-1606">health_data_sent</name>
+		</location>
+		<location id="id24" x="-1369" y="-1436">
+			<name x="-1471" y="-1444">target_area</name>
+			<label kind="invariant" x="-1343" y="-1462">t &lt;= 70</label>
+		</location>
+		<init ref="id18"/>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id18"/>
+			<label kind="guard" x="-1351" y="-1351">t &gt; 50</label>
+			<label kind="synchronisation" x="-1369" y="-1368">find[l_id]!</label>
+			<label kind="assignment" x="-1351" y="-1385">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id24"/>
+			<label kind="synchronisation" x="-1496" y="-1538">target_position?</label>
+			<label kind="assignment" x="-1436" y="-1521">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id23"/>
+			<label kind="guard" x="-1419" y="-1666">t &gt; 2</label>
+			<label kind="synchronisation" x="-1428" y="-1648">health!</label>
+			<label kind="assignment" x="-1360" y="-1657">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="-1241" y="-1708">requestHealth?</label>
+			<label kind="assignment" x="-1207" y="-1674">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id21"/>
+			<label kind="guard" x="-1012" y="-1665">t &gt; 2</label>
+			<label kind="synchronisation" x="-1012" y="-1648">position!</label>
+			<label kind="assignment" x="-1012" y="-1631">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id20"/>
+			<label kind="synchronisation" x="-1012" y="-1495">requestPosition?</label>
+			<label kind="assignment" x="-1011" y="-1521">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id19"/>
+			<label kind="synchronisation" x="-1139" y="-1368">wait[l_id]?</label>
+			<label kind="assignment" x="-1173" y="-1402">t := 0</label>
+		</transition>
+	</template>
+	<template>
+		<name>start</name>
+		<declaration>// Place local declarations here.
+clock t;</declaration>
+		<location id="id25" x="-357" y="-246">
+			<name x="-433" y="-254">activate</name>
+		</location>
+		<location id="id26" x="-127" y="-246">
+			<name x="-161" y="-280">start_follow</name>
+			<label kind="invariant" x="-153" y="-229">t &lt;= 10</label>
+		</location>
+		<location id="id27" x="42" y="-195">
+			<name x="59" y="-203">begin_rescue</name>
+			<label kind="invariant" x="-34" y="-204">t &lt;= 10</label>
+		</location>
+		<location id="id28" x="42" y="-110">
+			<name x="17" y="-93">follower_info</name>
+		</location>
+		<location id="id29" x="-357" y="-110">
+			<name x="-416" y="-93">start_survey</name>
+		</location>
+		<init ref="id25"/>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id25"/>
+			<label kind="synchronisation" x="-501" y="-187">mission_complete?</label>
+			<label kind="assignment" x="-416" y="-161">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="-153" y="-93">wait[1]!</label>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id28"/>
+			<label kind="guard" x="0" y="-161">t &gt; 5</label>
+			<label kind="synchronisation" x="59" y="-161">begin[0]!</label>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id27"/>
+			<label kind="guard" x="-51" y="-238">t &gt; 5</label>
+			<label kind="synchronisation" x="-17" y="-272">follow_bots[1]!</label>
+			<nail x="42" y="-246"/>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id26"/>
+			<label kind="guard" x="-331" y="-272">t &gt; 10</label>
+			<label kind="synchronisation" x="-280" y="-272">move_bots[0]!</label>
+			<label kind="assignment" x="-263" y="-238">t := 0</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+leader0 = leader_role(bot1_leader_id);
+follower0 = follower_role(bot1_leader_id);
+leader1 = leader_role(bot2_leader_id);
+follower1 = follower_role(bot2_leader_id);
+c0 = coordinate(bot1_leader_id);
+c1 = coordinate(bot2_leader_id);
+su0 = survey_role(bot1_leader_id);
+su1 = survey_role(bot2_leader_id);
+sc0 = scan_role(bot1_leader_id);
+sc1 = scan_role(bot2_leader_id);
+
+
+// List one or more processes to be composed into a system.
+system start, leader0, follower0, leader1, follower1, c0, c1, su0, su1, sc0, sc1;
+    </system>
+	<queries>
+		<query>
+			<formula>A[] not deadlock</formula>
+			<comment>/* Ensure that the system is deadlock free */</comment>
+		</query>
+		<query>
+			<formula>A[] not (leader0.survey and follower1.target_area)</formula>
+			<comment>/* The Follower does not reach the inspection area unless instructed by leader */</comment>
+		</query>
+		<query>
+			<formula>A[] not (sc1.send_data and sc1.t &gt; 60)</formula>
+			<comment>/* The follower bot must scan and send data within 60 sec */</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; follower1.health_data</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>A[] follower1.target_area imply follower1.t &lt;= 70</formula>
+			<comment>/* The follower bot must be at the target area for 70 seconds */</comment>
+		</query>
+		<query>
+			<formula>leader0.survey --&gt; c0.ready</formula>
+			<comment>/* Check if the a survey leads to identifying the survey area */</comment>
+		</query>
+	</queries>
+</nta>

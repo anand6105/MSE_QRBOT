@@ -80,50 +80,60 @@ void verifyFollowerBotHealth(fbid_t f_id){
 </declaration>
 	<template>
 		<name x="5" y="5">health_monitor</name>
-		<declaration>// Place local declarations here.</declaration>
-		<location id="id0" x="-1334" y="-136">
-			<name x="-1411" y="-144">active</name>
+		<declaration>// Place local declarations here.
+clock t;</declaration>
+		<location id="id0" x="-1087" y="-1164">
+			<name x="-1164" y="-1172">active</name>
 		</location>
-		<location id="id1" x="-1020" y="-136">
-			<name x="-986" y="-145">request_sent</name>
+		<location id="id1" x="-773" y="-1164">
+			<name x="-739" y="-1173">request_sent</name>
+			<label kind="invariant" x="-739" y="-1190">t &lt;= 5</label>
 		</location>
-		<location id="id2" x="-1020" y="-17">
-			<name x="-994" y="-25">health_data_received</name>
+		<location id="id2" x="-773" y="-1045">
+			<name x="-747" y="-1053">health_data_received</name>
 		</location>
-		<location id="id3" x="-1173" y="93">
-			<name x="-1232" y="119">analyze_health_data</name>
+		<location id="id3" x="-926" y="-935">
+			<name x="-985" y="-909">analyze_health_data</name>
+			<label kind="invariant" x="-943" y="-892">t &lt;= 5</label>
 		</location>
-		<location id="id4" x="-1334" y="-8">
-			<name x="-1394" y="-17">reset</name>
+		<location id="id4" x="-1087" y="-1036">
+			<name x="-1147" y="-1045">reset</name>
 		</location>
 		<init ref="id0"/>
 		<transition>
 			<source ref="id4"/>
 			<target ref="id0"/>
+			<label kind="assignment" x="-1139" y="-1105">t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id3"/>
 			<target ref="id4"/>
-			<label kind="select" x="-1351" y="51">bot_id : fbid_t</label>
-			<label kind="synchronisation" x="-1385" y="76">fhealth_ack[bot_id]!</label>
+			<label kind="select" x="-1104" y="-977">bot_id : fbid_t</label>
+			<label kind="guard" x="-1147" y="-977">t &gt; 2</label>
+			<label kind="synchronisation" x="-1138" y="-952">fhealth_ack[bot_id]!</label>
+			<label kind="assignment" x="-1079" y="-994">t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id2"/>
 			<target ref="id3"/>
-			<label kind="select" x="-1105" y="68">id : fbid_t</label>
-			<label kind="assignment" x="-1105" y="51">verifyFollowerBotHealth(id)</label>
+			<label kind="select" x="-858" y="-960">id : fbid_t</label>
+			<label kind="assignment" x="-858" y="-977">verifyFollowerBotHealth(id)</label>
 		</transition>
 		<transition>
 			<source ref="id1"/>
 			<target ref="id2"/>
-			<label kind="select" x="-1003" y="-76">f_id : fbid_t</label>
-			<label kind="synchronisation" x="-1003" y="-102">response_health[f_id]?</label>
+			<label kind="select" x="-756" y="-1104">f_id : fbid_t</label>
+			<label kind="guard" x="-756" y="-1147">t &gt; 2</label>
+			<label kind="synchronisation" x="-756" y="-1130">response_health[f_id]?</label>
+			<label kind="assignment" x="-756" y="-1088">t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id0"/>
 			<target ref="id1"/>
-			<label kind="select" x="-1241" y="-127">bot_id : fbid_t</label>
-			<label kind="synchronisation" x="-1266" y="-161">request_health[bot_id]!</label>
+			<label kind="select" x="-994" y="-1155">bot_id : fbid_t</label>
+			<label kind="guard" x="-1054" y="-1190">t &gt; 2</label>
+			<label kind="synchronisation" x="-986" y="-1190">request_health[bot_id]!</label>
+			<label kind="assignment" x="-884" y="-1156">t := 0</label>
 		</transition>
 	</template>
 	<template>
@@ -131,8 +141,7 @@ void verifyFollowerBotHealth(fbid_t f_id){
 		<parameter>const fbid_t bot_id</parameter>
 		<declaration>// Place global declarations here for slave bot registry.
 
-clock reg;
-int attempt = 0;
+clock t;
 int associated_leader_l_id = 99;
 bot_health_info bh_info;
 
@@ -150,27 +159,33 @@ void setBotHealthInfo() {
 		</location>
 		<location id="id6" x="-314" y="-93">
 			<name x="-501" y="-101">accumulate_health_data</name>
+			<label kind="invariant" x="-382" y="-119">t &lt;= 5</label>
 		</location>
 		<location id="id7" x="94" y="-93">
 			<name x="84" y="-127">wait_for_health_ack</name>
+			<label kind="invariant" x="119" y="-102">t &lt;= 5</label>
 		</location>
 		<init ref="id5"/>
 		<transition>
 			<source ref="id7"/>
 			<target ref="id5"/>
+			<label kind="guard" x="8" y="34">t &gt; 2</label>
 			<label kind="synchronisation" x="0" y="18">fhealth_ack[bot_id]?</label>
+			<label kind="assignment" x="59" y="34">t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id6"/>
 			<target ref="id7"/>
+			<label kind="guard" x="-272" y="-119">t &gt; 2</label>
 			<label kind="synchronisation" x="-203" y="-84">response_health[bot_id]!</label>
-			<label kind="assignment" x="-229" y="-118">sendBotHealthInfo(bot_id, bh_info)</label>
+			<label kind="assignment" x="-229" y="-118">sendBotHealthInfo(bot_id, bh_info), t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id5"/>
 			<target ref="id6"/>
+			<label kind="guard" x="-296" y="-13">t &gt; 2</label>
 			<label kind="synchronisation" x="-399" y="9">request_health[bot_id]?</label>
-			<label kind="assignment" x="-365" y="26">setBotHealthInfo()</label>
+			<label kind="assignment" x="-408" y="25">setBotHealthInfo(), t := 0</label>
 		</transition>
 	</template>
 	<system>// Place template instantiations here.

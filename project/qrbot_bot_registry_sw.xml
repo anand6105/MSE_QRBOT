@@ -6,7 +6,7 @@
 
 /* Global constant values */
 const int leader_bot_id          = 0;
-const int NO_OF_SLAVE_BOTS       = 3;
+const int NO_OF_SLAVE_BOTS       = 2;
 const int LEADER_BOT_OFFSET      = 0;
 const int MAX_LOGICAL_ID         = 99;
 
@@ -74,111 +74,101 @@ void registerBotDetails(fbid_t follower_id) {
 </declaration>
 	<template>
 		<name x="5" y="5">master_registry</name>
-		<declaration>// Place local declarations here.</declaration>
-		<location id="id0" x="-1268" y="-187">
-			<name x="-1278" y="-221">ready</name>
+		<declaration>// Place local declarations here.
+clock t;</declaration>
+		<location id="id0" x="-3238" y="-3510">
+			<name x="-3248" y="-3544">ready</name>
 		</location>
-		<location id="id1" x="-681" y="-85">
-			<name x="-656" y="-94">register_bots</name>
+		<location id="id1" x="-2687" y="-3408">
+			<name x="-2662" y="-3417">register_bots</name>
 		</location>
-		<location id="id2" x="-969" y="-187">
-			<name x="-1038" y="-238">wait_to_register_bot</name>
+		<location id="id2" x="-2975" y="-3510">
+			<name x="-3043" y="-3553">wait_to_register_bot</name>
 		</location>
-		<location id="id3" x="-681" y="33">
-			<name x="-663" y="8">sync_bots</name>
+		<location id="id3" x="-2687" y="-3290">
+			<name x="-2669" y="-3315">sync_bots</name>
 		</location>
-		<location id="id4" x="-986" y="34">
-			<name x="-1113" y="8">send_command</name>
-		</location>
-		<location id="id5" x="-986" y="187">
-			<name x="-1037" y="204">reply_from_slave</name>
+		<location id="id4" x="-2992" y="-3289">
+			<name x="-3119" y="-3315">send_command</name>
 		</location>
 		<init ref="id0"/>
 		<transition>
-			<source ref="id5"/>
-			<target ref="id4"/>
-			<label kind="select" x="-1139" y="136">fb_id :fbid_t</label>
-			<label kind="synchronisation" x="-1173" y="110">response[fb_id]?</label>
-			<nail x="-1054" y="136"/>
-			<nail x="-1054" y="93"/>
-		</transition>
-		<transition>
-			<source ref="id4"/>
-			<target ref="id5"/>
-			<label kind="select" x="-943" y="170">fb_id :fbid_t</label>
-			<label kind="guard" x="-977" y="136">bot_in_motion == bot_in_sync</label>
-			<label kind="synchronisation" x="-977" y="153">command[fb_id]!</label>
-		</transition>
-		<transition>
 			<source ref="id4"/>
 			<target ref="id3"/>
-			<label kind="guard" x="-926" y="110">bot_in_motion != bot_in_sync</label>
-			<nail x="-943" y="102"/>
-			<nail x="-722" y="102"/>
+			<label kind="guard" x="-2932" y="-3213">bot_in_motion != bot_in_sync</label>
+			<label kind="assignment" x="-2856" y="-3238">t := 0</label>
+			<nail x="-2949" y="-3221"/>
+			<nail x="-2728" y="-3221"/>
 		</transition>
 		<transition>
 			<source ref="id4"/>
 			<target ref="id2"/>
-			<label kind="select" x="-1147" y="-76">b_id : fbid_t</label>
-			<label kind="guard" x="-1147" y="-25">reg_bots != NO_OF_SLAVE_BOTS</label>
-			<label kind="synchronisation" x="-1147" y="-50">event_send_bot_info[b_id]?</label>
-			<nail x="-1164" y="34"/>
-			<nail x="-1164" y="-110"/>
-			<nail x="-969" y="-110"/>
+			<label kind="select" x="-3153" y="-3399">b_id : fbid_t</label>
+			<label kind="synchronisation" x="-3153" y="-3373">event_send_bot_info[b_id]?</label>
+			<nail x="-3170" y="-3289"/>
+			<nail x="-3170" y="-3433"/>
+			<nail x="-2975" y="-3433"/>
 		</transition>
 		<transition>
 			<source ref="id3"/>
 			<target ref="id4"/>
-			<label kind="select" x="-807" y="8">b_id : fbid_t</label>
-			<label kind="guard" x="-909" y="42">reg_bots == bot_in_sync</label>
-			<label kind="synchronisation" x="-943" y="8">move_bot[b_id]!</label>
-			<label kind="assignment" x="-884" y="59">setBotInMotion()</label>
+			<label kind="select" x="-2813" y="-3315">b_id : fbid_t</label>
+			<label kind="guard" x="-2958" y="-3281">reg_bots == bot_in_sync and t &gt; 5</label>
+			<label kind="synchronisation" x="-2949" y="-3315">move_bot[b_id]!</label>
+			<label kind="assignment" x="-2907" y="-3264">setBotInMotion(), t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id3"/>
 			<target ref="id3"/>
-			<label kind="select" x="-450" y="93">fb_id :fbid_t</label>
-			<label kind="guard" x="-450" y="59">reg_bots != bot_in_sync</label>
-			<label kind="synchronisation" x="-450" y="76">bot_sync[fb_id]!</label>
-			<label kind="assignment" x="-450" y="42">bot_in_sync = bot_in_sync + 1</label>
-			<nail x="-680" y="110"/>
-			<nail x="-459" y="110"/>
-			<nail x="-459" y="34"/>
+			<label kind="select" x="-2456" y="-3230">fb_id :fbid_t</label>
+			<label kind="guard" x="-2456" y="-3264">reg_bots != bot_in_sync</label>
+			<label kind="synchronisation" x="-2456" y="-3247">bot_sync[fb_id]!</label>
+			<label kind="assignment" x="-2456" y="-3281">bot_in_sync = bot_in_sync + 1, t := 0</label>
+			<nail x="-2686" y="-3213"/>
+			<nail x="-2465" y="-3213"/>
+			<nail x="-2465" y="-3289"/>
 		</transition>
 		<transition>
 			<source ref="id1"/>
 			<target ref="id3"/>
-			<label kind="guard" x="-671" y="-42">reg_bots == NO_OF_SLAVE_BOTS</label>
+			<label kind="guard" x="-2677" y="-3365">reg_bots == NO_OF_SLAVE_BOTS</label>
+			<label kind="assignment" x="-2677" y="-3349">t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id1"/>
 			<target ref="id2"/>
-			<label kind="guard" x="-943" y="-68">reg_bots != NO_OF_SLAVE_BOTS</label>
-			<nail x="-970" y="-85"/>
+			<label kind="guard" x="-2949" y="-3391">reg_bots != NO_OF_SLAVE_BOTS</label>
+			<label kind="assignment" x="-2864" y="-3425">t := 0</label>
+			<nail x="-2976" y="-3408"/>
 		</transition>
 		<transition>
 			<source ref="id2"/>
 			<target ref="id2"/>
-			<label kind="select" x="-1020" y="-280">b_id : fbid_t</label>
-			<label kind="synchronisation" x="-1071" y="-314">event_send_bot_info[b_id]?</label>
-			<nail x="-851" y="-238"/>
-			<nail x="-851" y="-289"/>
-			<nail x="-1089" y="-289"/>
-			<nail x="-1089" y="-238"/>
-			<nail x="-1072" y="-230"/>
+			<label kind="select" x="-3026" y="-3603">b_id : fbid_t</label>
+			<label kind="guard" x="-2915" y="-3604">t &gt; 10</label>
+			<label kind="synchronisation" x="-3077" y="-3637">event_send_bot_info[b_id]?</label>
+			<label kind="assignment" x="-2915" y="-3587">t := 0</label>
+			<nail x="-2857" y="-3561"/>
+			<nail x="-2857" y="-3612"/>
+			<nail x="-3095" y="-3612"/>
+			<nail x="-3095" y="-3561"/>
+			<nail x="-3078" y="-3553"/>
 		</transition>
 		<transition>
 			<source ref="id2"/>
 			<target ref="id1"/>
-			<label kind="select" x="-671" y="-136">id : fbid_t</label>
-			<label kind="synchronisation" x="-673" y="-162">master_ack[id]!</label>
-			<label kind="assignment" x="-673" y="-187">registerBotDetails(id)</label>
-			<nail x="-681" y="-187"/>
+			<label kind="select" x="-2677" y="-3459">id : fbid_t</label>
+			<label kind="guard" x="-2677" y="-3527">t &gt; 10</label>
+			<label kind="synchronisation" x="-2679" y="-3485">master_ack[id]!</label>
+			<label kind="assignment" x="-2679" y="-3510">registerBotDetails(id), t := 0</label>
+			<nail x="-2687" y="-3510"/>
 		</transition>
 		<transition>
 			<source ref="id0"/>
 			<target ref="id2"/>
-			<label kind="assignment" x="-1232" y="-212">initializeMaster(leader_bot_id)</label>
+			<label kind="guard" x="-3144" y="-3537">t &gt; 10</label>
+			<label kind="assignment" x="-3204" y="-3502">initializeMaster(leader_bot_id),
+t := 0</label>
 		</transition>
 	</template>
 	<template>
@@ -186,7 +176,7 @@ void registerBotDetails(fbid_t follower_id) {
 		<parameter>const fbid_t bot_id</parameter>
 		<declaration>// Place global declarations here for slave bot registry.
 
-clock reg;
+clock t;
 int attempt = 0;
 int associated_leader_l_id = -1;
 
@@ -206,73 +196,74 @@ void associateMaster(int bot_index){
 
 
 </declaration>
-		<location id="id6" x="-646" y="-93">
-			<name x="-705" y="-102">start</name>
+		<location id="id5" x="-13693" y="-12996">
+			<name x="-13752" y="-13005">start</name>
 		</location>
-		<location id="id7" x="-255" y="-93">
-			<name x="-238" y="-102">register</name>
+		<location id="id6" x="-13302" y="-12996">
+			<name x="-13285" y="-13005">register</name>
 		</location>
-		<location id="id8" x="-255" y="34">
-			<name x="-229" y="26">synchronize_bots</name>
+		<location id="id7" x="-13302" y="-12869">
+			<name x="-13276" y="-12877">synchronize_bots</name>
 		</location>
-		<location id="id9" x="-535" y="34">
-			<name x="-663" y="25">assign_master</name>
+		<location id="id8" x="-13582" y="-12869">
+			<name x="-13633" y="-12911">assign_master</name>
 		</location>
-		<location id="id10" x="-255" y="-187">
-			<name x="-238" y="-196">registry_denied</name>
+		<location id="id9" x="-13302" y="-13090">
+			<name x="-13285" y="-13099">registry_denied</name>
 		</location>
-		<location id="id11" x="-535" y="195">
-			<name x="-586" y="220">reply_to_master</name>
+		<location id="id10" x="-13582" y="-12784">
+			<name x="-13634" y="-12758">master_request</name>
 		</location>
-		<location id="id12" x="-535" y="93">
-			<name x="-663" y="85">master_request</name>
-		</location>
-		<init ref="id6"/>
+		<init ref="id5"/>
 		<transition>
-			<source ref="id11"/>
-			<target ref="id12"/>
-			<label kind="synchronisation" x="-467" y="127">response[bot_id]!</label>
-			<nail x="-476" y="161"/>
-			<nail x="-476" y="119"/>
-		</transition>
-		<transition>
-			<source ref="id12"/>
-			<target ref="id11"/>
-			<label kind="synchronisation" x="-671" y="127">command[bot_id]?</label>
+			<source ref="id10"/>
+			<target ref="id5"/>
+			<nail x="-13693" y="-12784"/>
 		</transition>
 		<transition>
 			<source ref="id9"/>
-			<target ref="id12"/>
-			<label kind="synchronisation" x="-671" y="51">move_bot[bot_id]?</label>
-		</transition>
-		<transition>
-			<source ref="id7"/>
-			<target ref="id10"/>
-			<label kind="guard" x="-246" y="-161">attempt &gt; 5</label>
+			<target ref="id5"/>
+			<nail x="-13693" y="-13090"/>
 		</transition>
 		<transition>
 			<source ref="id8"/>
-			<target ref="id9"/>
-			<label kind="synchronisation" x="-450" y="8">bot_sync[bot_id]?</label>
-			<label kind="assignment" x="-467" y="42">associateMaster(bot_id)</label>
+			<target ref="id10"/>
+			<label kind="guard" x="-13574" y="-12818">t &gt; 5</label>
+			<label kind="synchronisation" x="-13574" y="-12835">move_bot[bot_id]?</label>
+			<label kind="assignment" x="-13523" y="-12818">t := 0</label>
 		</transition>
 		<transition>
-			<source ref="id7"/>
-			<target ref="id6"/>
-			<label kind="guard" x="-484" y="-170">attempt &lt; 5</label>
-			<nail x="-314" y="-144"/>
-			<nail x="-586" y="-144"/>
+			<source ref="id6"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-13293" y="-13064">attempt &gt; 5</label>
 		</transition>
 		<transition>
 			<source ref="id7"/>
 			<target ref="id8"/>
-			<label kind="synchronisation" x="-246" y="-42">master_ack[bot_id]?</label>
+			<label kind="synchronisation" x="-13514" y="-12895">bot_sync[bot_id]?</label>
+			<label kind="assignment" x="-13531" y="-12861">associateMaster(bot_id), t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-13531" y="-13073">attempt &lt; 5</label>
+			<nail x="-13361" y="-13047"/>
+			<nail x="-13633" y="-13047"/>
 		</transition>
 		<transition>
 			<source ref="id6"/>
 			<target ref="id7"/>
-			<label kind="synchronisation" x="-544" y="-119">event_send_bot_info[bot_id]!</label>
-			<label kind="assignment" x="-476" y="-85">attempt++</label>
+			<label kind="guard" x="-13293" y="-12962">t &gt; 10</label>
+			<label kind="synchronisation" x="-13293" y="-12945">master_ack[bot_id]?</label>
+			<label kind="assignment" x="-13293" y="-12928">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-13582" y="-12988">t &gt; 10</label>
+			<label kind="synchronisation" x="-13591" y="-13022">event_send_bot_info[bot_id]!</label>
+			<label kind="assignment" x="-13523" y="-12988">attempt++,
+t := 0</label>
 		</transition>
 	</template>
 	<system>// Place template instantiations here.
