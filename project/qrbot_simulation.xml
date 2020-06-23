@@ -16,7 +16,7 @@ broadcast chan move_bots[no_of_bots], follow_bots[no_of_bots], mission_complete;
 broadcast chan begin[no_of_bots], survey_area[no_of_bots], wait[no_of_bots], find[no_of_bots];
 chan requestPosition, position, requestHealth, health, survey_done, target_position;</declaration>
 	<template>
-		<name>scan_role</name>
+		<name>detect_role</name>
 		<parameter>const int l_id</parameter>
 		<declaration>// Place local declarations here.
 clock t;</declaration>
@@ -370,12 +370,12 @@ c0 = coordinate(bot1_leader_id);
 c1 = coordinate(bot2_leader_id);
 su0 = survey_role(bot1_leader_id);
 su1 = survey_role(bot2_leader_id);
-sc0 = scan_role(bot1_leader_id);
-sc1 = scan_role(bot2_leader_id);
+d0 = detect_role(bot1_leader_id);
+d1 = detect_role(bot2_leader_id);
 
 
 // List one or more processes to be composed into a system.
-system start, leader0, follower0, leader1, follower1, c0, c1, su0, su1, sc0, sc1;
+system start, leader0, follower0, leader1, follower1, c0, c1, su0, su1, d0, d1;
     </system>
 	<queries>
 		<query>
@@ -387,7 +387,7 @@ system start, leader0, follower0, leader1, follower1, c0, c1, su0, su1, sc0, sc1
 			<comment>/* The Follower does not reach the inspection area unless instructed by leader */</comment>
 		</query>
 		<query>
-			<formula>A[] not (sc1.send_data and sc1.t &gt; 60)</formula>
+			<formula>A[] not (d1.send_data and d1.t &gt; 60)</formula>
 			<comment>/* The follower bot must scan and send data within 60 sec */</comment>
 		</query>
 		<query>

@@ -13,7 +13,7 @@ A[] not (leader0.survey and follower1.target_area)
 /*
 \/* The follower bot must scan and send data within 60 sec *\/
 */
-A[] not (sc1.send_data and sc1.t > 60)
+A[] not (d1.send_data and d1.t > 60)
 
 /*
 
