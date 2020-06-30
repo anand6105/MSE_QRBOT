@@ -3,56 +3,106 @@
 <nta>
 	<declaration>// Place global declarations here.
 
-const int no_of_bots = 2;
+const int no_of_bots = 3;
 
 /* Physical Bot IDs of each bot */
-const int bot1_leader_id = 0;
-const int bot1_follower_id = 1;
-const int bot2_leader_id = 1;
-const int bot2_follower_id = 0;
+const int bot0_leader_id = 0;
+const int bot1_leader_id = 1;
+const int bot2_leader_id = 2;
 
 
 int l_bot_id = 0;
 int f_bot_id = 1;
 
+int bot_seq[no_of_bots] = {2, 1, 0};
+/* Physical Bot IDs of each bot */
+typedef int[0,1] fbid_t; 
 
-broadcast chan move_bots[no_of_bots], follow_bots[no_of_bots], mission_complete;
-broadcast chan begin[no_of_bots], survey_area[no_of_bots], wait[no_of_bots], find[no_of_bots];
-chan requestPosition, position, requestHealth, health, survey_done, target_position;
+int bot_index = 0;
+int f_count = 0;
+int w_count = 0;
+int f_sync_count = 0;
+int pos_rcv = 0;
+int health_rcv = 0;
+int reached_target = 0;
+int mission_count = 0;
 
+broadcast chan requestPosition, requestHealth, target_position, find;
+broadcast chan begin[no_of_bots], survey_area[no_of_bots], move_bots[no_of_bots];
+chan position, health, survey_done, mission_complete[no_of_bots], target_reached[no_of_bots];
+chan follow_bots[no_of_bots], activate_f[no_of_bots], f_sync[no_of_bots], detect_complete[no_of_bots];
 
+// Switch role 
 void switch_role() {
-    int new_leader = l_bot_id;
+    int index = 0;
+    int new_follower = l_bot_id;
     l_bot_id = f_bot_id;
-    f_bot_id = new_leader;
-}</declaration>
+    f_bot_id = new_follower;
+    //Assign Leader bot to last index
+    bot_seq[2] = l_bot_id;
+    // Check only the first two index
+    for(index = 0; index &lt; no_of_bots - 1; index++){
+        //Find the index of old follower (which is new leader) and replace it new follower 
+        if (bot_seq[index] == l_bot_id) {
+            bot_seq[index] = new_follower;
+        }
+    }
+}
+
+//Ensure the followers bot have arrived at the target
+void arrived_at_target() {
+    reached_target++;
+}
+
+// Initialize all the count variables
+void init_sys() {
+    bot_index = 0;
+    f_count = 0;
+    w_count = 0;
+    f_sync_count = 0;
+    pos_rcv = 0;
+    health_rcv = 0;
+    reached_target = 0;
+    mission_count = 0;
+}
+
+</declaration>
 	<template>
 		<name>detect_role</name>
 		<parameter>const int l_id</parameter>
 		<declaration>// Place local declarations here.
 clock t;</declaration>
-		<location id="id0" x="-238" y="-42">
-			<name x="-272" y="-25">start_scan</name>
+		<location id="id0" x="-451" y="-221">
+			<name x="-536" y="-255">start_scan</name>
 		</location>
-		<location id="id1" x="-8" y="-42">
-			<name x="-42" y="-25">send_data</name>
-			<label kind="invariant" x="17" y="-51">t &lt;= 60</label>
+		<location id="id1" x="0" y="-221">
+			<name x="25" y="-213">send_data</name>
+			<label kind="invariant" x="25" y="-230">t &lt;= 60</label>
+		</location>
+		<location id="id2" x="-153" y="-221">
+			<name x="-212" y="-255">bot_reached_target</name>
 		</location>
 		<init ref="id0"/>
 		<transition>
-			<source ref="id1"/>
-			<target ref="id0"/>
-			<label kind="guard" x="-187" y="-153">t &gt; 40</label>
-			<label kind="synchronisation" x="-187" y="-136">mission_complete!</label>
-			<label kind="assignment" x="-119" y="-153">t := 0</label>
-			<nail x="-59" y="-110"/>
-			<nail x="-187" y="-110"/>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-68" y="-238">find?</label>
+			<label kind="assignment" x="-77" y="-213">t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id0"/>
-			<target ref="id1"/>
-			<label kind="synchronisation" x="-153" y="-25">find[l_id]?</label>
-			<label kind="assignment" x="-144" y="-59">t := 0</label>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-408" y="-212">target_reached[l_id]?</label>
+			<label kind="assignment" x="-416" y="-246">t := 0,arrived_at_target()</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-178" y="-331">t &gt; 40</label>
+			<label kind="synchronisation" x="-187" y="-315">detect_complete[l_id]!</label>
+			<label kind="assignment" x="-111" y="-332">t := 0</label>
+			<nail x="0" y="-289"/>
+			<nail x="-451" y="-289"/>
 		</transition>
 	</template>
 	<template>
@@ -60,66 +110,80 @@ clock t;</declaration>
 		<parameter>const int l_id</parameter>
 		<declaration>// Place local declarations here.
 clock t;</declaration>
-		<location id="id2" x="-1054" y="-93">
+		<location id="id3" x="-1054" y="-93">
 			<name x="-1156" y="-102">in_motion</name>
 		</location>
-		<location id="id3" x="-816" y="-93">
+		<location id="id4" x="-816" y="-93">
 			<name x="-867" y="-68">follower_location</name>
 			<label kind="invariant" x="-807" y="-85">t &lt;= 5</label>
 		</location>
-		<location id="id4" x="-816" y="-212">
+		<location id="id5" x="-816" y="-212">
 			<name x="-960" y="-221">follower_position</name>
 		</location>
-		<location id="id5" x="-620" y="-212">
+		<location id="id6" x="-620" y="-212">
 			<name x="-603" y="-221">rcv_position</name>
-			<label kind="invariant" x="-637" y="-246">t &lt;= 5</label>
+			<label kind="invariant" x="-603" y="-238">t &lt;= 5</label>
 		</location>
-		<location id="id6" x="-620" y="-85">
-			<name x="-603" y="-93">follower_health</name>
+		<location id="id7" x="-620" y="-85">
+			<name x="-739" y="-110">follower_health</name>
 		</location>
-		<location id="id7" x="-620" y="34">
+		<location id="id8" x="-620" y="34">
 			<name x="-637" y="51">survey</name>
-			<label kind="invariant" x="-595" y="25">t &lt;= 70</label>
+			<label kind="invariant" x="-688" y="8">t &lt;= 70</label>
 		</location>
-		<init ref="id2"/>
+		<init ref="id3"/>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-510" y="-25">health_rcv != 2</label>
+			<nail x="-518" y="34"/>
+			<nail x="-518" y="-85"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-765" y="-297">pos_rcv != 2</label>
+			<nail x="-620" y="-272"/>
+			<nail x="-816" y="-272"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-1020" y="42">t &gt; 60 &amp;&amp; health_rcv == 2</label>
+			<label kind="synchronisation" x="-926" y="8">survey_area[l_id]!</label>
+			<label kind="assignment" x="-816" y="42">t := 0</label>
+			<nail x="-1054" y="34"/>
+		</transition>
 		<transition>
 			<source ref="id7"/>
-			<target ref="id2"/>
-			<label kind="guard" x="-986" y="8">t &gt; 60</label>
-			<label kind="synchronisation" x="-926" y="8">survey_area[l_id]!</label>
-			<label kind="assignment" x="-875" y="42">t := 0</label>
-			<nail x="-1054" y="34"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-680" y="-34">health?</label>
+			<label kind="assignment" x="-773" y="-17">t := 0, health_rcv++</label>
 		</transition>
 		<transition>
 			<source ref="id6"/>
 			<target ref="id7"/>
-			<label kind="synchronisation" x="-680" y="-34">health?</label>
-			<label kind="assignment" x="-671" y="-51">t := 0</label>
-		</transition>
-		<transition>
-			<source ref="id5"/>
-			<target ref="id6"/>
-			<label kind="guard" x="-612" y="-161">t &gt; 2</label>
+			<label kind="guard" x="-612" y="-161">t &gt; 2 &amp;&amp; pos_rcv == 2</label>
 			<label kind="synchronisation" x="-731" y="-144">requestHealth!</label>
 			<label kind="assignment" x="-612" y="-144">t := 0</label>
 		</transition>
 		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-756" y="-238">position?</label>
+			<label kind="assignment" x="-773" y="-204">t := 0, pos_rcv++</label>
+			<nail x="-782" y="-212"/>
+		</transition>
+		<transition>
 			<source ref="id4"/>
 			<target ref="id5"/>
-			<label kind="synchronisation" x="-756" y="-238">position?</label>
-			<label kind="assignment" x="-739" y="-204">t := 0</label>
-			<nail x="-782" y="-212"/>
+			<label kind="guard" x="-1020" y="-187">t &gt; 2 &amp;&amp; f_sync_count == 2</label>
+			<label kind="synchronisation" x="-935" y="-170">requestPosition!</label>
+			<label kind="assignment" x="-867" y="-153">t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id3"/>
 			<target ref="id4"/>
-			<label kind="guard" x="-867" y="-187">t &gt; 2</label>
-			<label kind="synchronisation" x="-943" y="-161">requestPosition!</label>
-			<label kind="assignment" x="-867" y="-144">t := 0</label>
-		</transition>
-		<transition>
-			<source ref="id2"/>
-			<target ref="id3"/>
 			<label kind="synchronisation" x="-986" y="-85">begin[l_id]?</label>
 			<label kind="assignment" x="-969" y="-119">t := 0</label>
 		</transition>
@@ -129,79 +193,87 @@ clock t;</declaration>
 		<parameter>const int l_id</parameter>
 		<declaration>// Place local declarations here.
 clock t;</declaration>
-		<location id="id8" x="-867" y="-229">
-			<name x="-875" y="-212">ready</name>
+		<location id="id9" x="-875" y="-713">
+			<name x="-883" y="-696">ready</name>
 		</location>
-		<location id="id9" x="-1130" y="-229">
-			<name x="-1147" y="-212">move</name>
+		<location id="id10" x="-1138" y="-713">
+			<name x="-1155" y="-696">move</name>
 		</location>
-		<location id="id10" x="-612" y="-229">
-			<name x="-629" y="-212">follow</name>
+		<location id="id11" x="-620" y="-713">
+			<name x="-637" y="-696">follow</name>
 		</location>
-		<location id="id11" x="-1130" y="-331">
-			<name x="-1173" y="-365">follower_info</name>
+		<location id="id12" x="-1138" y="-815">
+			<name x="-1181" y="-849">follower_info</name>
 		</location>
-		<location id="id12" x="-867" y="-374">
-			<name x="-892" y="-408">detect</name>
+		<location id="id13" x="-875" y="-858">
+			<name x="-900" y="-892">detect</name>
 		</location>
-		<location id="id13" x="-952" y="-331">
-			<name x="-986" y="-365">start_survey</name>
+		<location id="id14" x="-960" y="-815">
+			<name x="-994" y="-849">start_survey</name>
 		</location>
-		<location id="id14" x="-612" y="-374">
-			<name x="-663" y="-408">wait_for_leader</name>
+		<location id="id15" x="-620" y="-858">
+			<name x="-671" y="-892">wait_for_leader</name>
 		</location>
-		<init ref="id8"/>
+		<location id="id16" x="-875" y="-790">
+		</location>
+		<init ref="id9"/>
 		<transition>
-			<source ref="id14"/>
-			<target ref="id12"/>
-			<label kind="synchronisation" x="-782" y="-391">find[l_id]?</label>
-			<label kind="assignment" x="-773" y="-365">t := 0</label>
-		</transition>
-		<transition>
-			<source ref="id10"/>
-			<target ref="id14"/>
-			<label kind="synchronisation" x="-595" y="-289">wait[l_id]?</label>
-			<label kind="assignment" x="-595" y="-314">t := 0</label>
+			<source ref="id16"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="-866" y="-773">mission_complete[l_id]!</label>
+			<label kind="assignment" x="-866" y="-756">t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id13"/>
-			<target ref="id8"/>
-			<label kind="synchronisation" x="-1003" y="-280">survey_done?</label>
-			<label kind="assignment" x="-977" y="-297">t := 0</label>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-866" y="-824">detect_complete[l_id]?</label>
+			<label kind="assignment" x="-866" y="-841">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-790" y="-875">find?</label>
+			<label kind="assignment" x="-781" y="-849">t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id11"/>
-			<target ref="id13"/>
-			<label kind="synchronisation" x="-1105" y="-323">survey_area[l_id]?</label>
-			<label kind="assignment" x="-1071" y="-357">t := 0</label>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="-603" y="-773">activate_f[l_id]?</label>
+			<label kind="assignment" x="-603" y="-798">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="-1011" y="-764">survey_done?</label>
+			<label kind="assignment" x="-985" y="-781">t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id12"/>
-			<target ref="id8"/>
-			<label kind="synchronisation" x="-850" y="-306">mission_complete?</label>
-			<label kind="assignment" x="-850" y="-323">t := 0</label>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-1113" y="-807">survey_area[l_id]?</label>
+			<label kind="assignment" x="-1079" y="-841">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-1223" y="-773">begin[l_id]?</label>
+			<label kind="assignment" x="-1189" y="-756">t := 0</label>
 		</transition>
 		<transition>
 			<source ref="id9"/>
 			<target ref="id11"/>
-			<label kind="synchronisation" x="-1215" y="-289">begin[l_id]?</label>
-			<label kind="assignment" x="-1181" y="-272">t := 0</label>
+			<label kind="synchronisation" x="-798" y="-696">follow_bots[l_id]?</label>
+			<label kind="assignment" x="-764" y="-662">t := 0</label>
+			<nail x="-807" y="-671"/>
+			<nail x="-679" y="-671"/>
 		</transition>
 		<transition>
-			<source ref="id8"/>
+			<source ref="id9"/>
 			<target ref="id10"/>
-			<label kind="synchronisation" x="-790" y="-212">follow_bots[l_id]?</label>
-			<label kind="assignment" x="-756" y="-178">t := 0</label>
-			<nail x="-799" y="-187"/>
-			<nail x="-671" y="-187"/>
-		</transition>
-		<transition>
-			<source ref="id8"/>
-			<target ref="id9"/>
-			<label kind="synchronisation" x="-1062" y="-212">move_bots[l_id]?</label>
-			<label kind="assignment" x="-1028" y="-178">t := 0</label>
-			<nail x="-935" y="-187"/>
-			<nail x="-1071" y="-187"/>
+			<label kind="synchronisation" x="-1070" y="-696">move_bots[l_id]?</label>
+			<label kind="assignment" x="-1036" y="-662">t := 0</label>
+			<nail x="-943" y="-671"/>
+			<nail x="-1079" y="-671"/>
 		</transition>
 	</template>
 	<template>
@@ -209,35 +281,35 @@ clock t;</declaration>
 		<parameter>const int l_id</parameter>
 		<declaration>// Place local declarations here.
 clock t;</declaration>
-		<location id="id15" x="-212" y="-8">
+		<location id="id17" x="-212" y="-8">
 			<name x="-323" y="-17">start_survey</name>
 		</location>
-		<location id="id16" x="51" y="-8">
+		<location id="id18" x="51" y="-8">
 			<name x="76" y="-17">locate_target_area</name>
 			<label kind="invariant" x="41" y="9">t &lt;= 60</label>
 		</location>
-		<location id="id17" x="-85" y="-212">
+		<location id="id19" x="-85" y="-212">
 			<name x="-170" y="-246">set_follower_target_position</name>
 			<label kind="invariant" x="-59" y="-221">t &lt;= 20</label>
 		</location>
-		<init ref="id15"/>
+		<init ref="id17"/>
 		<transition>
-			<source ref="id17"/>
-			<target ref="id15"/>
+			<source ref="id19"/>
+			<target ref="id17"/>
 			<label kind="guard" x="-221" y="-136">t &gt; 10</label>
 			<label kind="synchronisation" x="-280" y="-153">target_position!</label>
 			<label kind="assignment" x="-221" y="-119">t := 0</label>
 		</transition>
 		<transition>
-			<source ref="id16"/>
-			<target ref="id17"/>
+			<source ref="id18"/>
+			<target ref="id19"/>
 			<label kind="guard" x="0" y="-127">t &gt; 40</label>
 			<label kind="synchronisation" x="0" y="-102">survey_done!</label>
 			<label kind="assignment" x="59" y="-127">t := 0</label>
 		</transition>
 		<transition>
-			<source ref="id15"/>
-			<target ref="id16"/>
+			<source ref="id17"/>
+			<target ref="id18"/>
 			<label kind="synchronisation" x="-144" y="-34">survey_area[l_id]?</label>
 			<label kind="assignment" x="-110" y="0">t := 0</label>
 		</transition>
@@ -247,74 +319,74 @@ clock t;</declaration>
 		<parameter>const int l_id</parameter>
 		<declaration>// Place local declarations here.
 clock t;</declaration>
-		<location id="id18" x="-1198" y="-1343">
+		<location id="id20" x="-1198" y="-1343">
 			<name x="-1232" y="-1317">in_motion</name>
 		</location>
-		<location id="id19" x="-1029" y="-1436">
+		<location id="id21" x="-1029" y="-1436">
 			<name x="-1003" y="-1453">wait_for_master</name>
 		</location>
-		<location id="id20" x="-1029" y="-1597">
+		<location id="id22" x="-1029" y="-1597">
 			<name x="-1165" y="-1605">get_bot_position</name>
 			<label kind="invariant" x="-1003" y="-1606">t &lt;= 5</label>
 		</location>
-		<location id="id21" x="-1029" y="-1682">
+		<location id="id23" x="-1029" y="-1682">
 			<name x="-1003" y="-1691">position_sent</name>
 		</location>
-		<location id="id22" x="-1369" y="-1682">
+		<location id="id24" x="-1369" y="-1682">
 			<name x="-1471" y="-1691">health_data</name>
 			<label kind="invariant" x="-1428" y="-1708">t &lt;= 5</label>
 		</location>
-		<location id="id23" x="-1369" y="-1597">
+		<location id="id25" x="-1369" y="-1597">
 			<name x="-1513" y="-1606">health_data_sent</name>
 		</location>
-		<location id="id24" x="-1369" y="-1436">
+		<location id="id26" x="-1369" y="-1436">
 			<name x="-1504" y="-1445">arrived_at_target</name>
 			<label kind="invariant" x="-1343" y="-1462">t &lt;= 70</label>
 		</location>
-		<init ref="id18"/>
+		<init ref="id20"/>
 		<transition>
-			<source ref="id24"/>
-			<target ref="id18"/>
+			<source ref="id26"/>
+			<target ref="id20"/>
 			<label kind="guard" x="-1351" y="-1351">t &gt; 50</label>
-			<label kind="synchronisation" x="-1369" y="-1368">find[l_id]!</label>
+			<label kind="synchronisation" x="-1445" y="-1368">target_reached[l_id]!</label>
 			<label kind="assignment" x="-1351" y="-1385">t := 0</label>
 		</transition>
 		<transition>
-			<source ref="id23"/>
-			<target ref="id24"/>
+			<source ref="id25"/>
+			<target ref="id26"/>
 			<label kind="synchronisation" x="-1496" y="-1538">target_position?</label>
 			<label kind="assignment" x="-1436" y="-1521">t := 0</label>
 		</transition>
 		<transition>
-			<source ref="id22"/>
-			<target ref="id23"/>
+			<source ref="id24"/>
+			<target ref="id25"/>
 			<label kind="guard" x="-1419" y="-1666">t &gt; 2</label>
 			<label kind="synchronisation" x="-1428" y="-1648">health!</label>
 			<label kind="assignment" x="-1360" y="-1657">t := 0</label>
 		</transition>
 		<transition>
-			<source ref="id21"/>
-			<target ref="id22"/>
+			<source ref="id23"/>
+			<target ref="id24"/>
 			<label kind="synchronisation" x="-1241" y="-1708">requestHealth?</label>
 			<label kind="assignment" x="-1207" y="-1674">t := 0</label>
 		</transition>
 		<transition>
-			<source ref="id20"/>
-			<target ref="id21"/>
+			<source ref="id22"/>
+			<target ref="id23"/>
 			<label kind="guard" x="-1012" y="-1665">t &gt; 2</label>
 			<label kind="synchronisation" x="-1012" y="-1648">position!</label>
 			<label kind="assignment" x="-1012" y="-1631">t := 0</label>
 		</transition>
 		<transition>
-			<source ref="id19"/>
-			<target ref="id20"/>
+			<source ref="id21"/>
+			<target ref="id22"/>
 			<label kind="synchronisation" x="-1012" y="-1495">requestPosition?</label>
 			<label kind="assignment" x="-1011" y="-1521">t := 0</label>
 		</transition>
 		<transition>
-			<source ref="id18"/>
-			<target ref="id19"/>
-			<label kind="synchronisation" x="-1139" y="-1368">wait[l_id]?</label>
+			<source ref="id20"/>
+			<target ref="id21"/>
+			<label kind="synchronisation" x="-1130" y="-1377">f_sync[l_id]?</label>
 			<label kind="assignment" x="-1173" y="-1402">t := 0</label>
 		</transition>
 	</template>
@@ -322,71 +394,150 @@ clock t;</declaration>
 		<name>start</name>
 		<declaration>// Place local declarations here.
 clock t;</declaration>
-		<location id="id25" x="-357" y="-246">
-			<name x="-433" y="-254">activate</name>
+		<location id="id27" x="-357" y="-246">
+			<name x="-391" y="-289">activate</name>
 		</location>
-		<location id="id26" x="-127" y="-246">
-			<name x="-161" y="-280">start_follow</name>
-			<label kind="invariant" x="-153" y="-229">t &lt;= 10</label>
+		<location id="id28" x="-127" y="-246">
+			<name x="-161" y="-297">start_follow</name>
+			<label kind="invariant" x="-153" y="-280">t &lt;= 10</label>
 		</location>
-		<location id="id27" x="42" y="-195">
+		<location id="id29" x="42" y="-195">
 			<name x="59" y="-203">begin_rescue</name>
-			<label kind="invariant" x="-34" y="-204">t &lt;= 10</label>
+			<label kind="invariant" x="59" y="-221">t &lt;= 10</label>
 		</location>
-		<location id="id28" x="42" y="-110">
-			<name x="17" y="-93">follower_info</name>
+		<location id="id30" x="42" y="-110">
+			<name x="-59" y="-136">follower_info</name>
 		</location>
-		<location id="id29" x="-357" y="-110">
-			<name x="-416" y="-93">start_survey</name>
+		<location id="id31" x="-357" y="-110">
+			<name x="-382" y="-144">start_survey</name>
 		</location>
-		<init ref="id25"/>
+		<location id="id32" x="-178" y="-110">
+			<name x="-221" y="-144">sync_follower</name>
+		</location>
+		<location id="id33" x="-527" y="-246">
+			<name x="-561" y="-297">reach_target</name>
+		</location>
+		<location id="id34" x="-527" y="-110">
+			<name x="-586" y="-85">arrive_at_target</name>
+		</location>
+		<init ref="id27"/>
+		<transition>
+			<source ref="id34"/>
+			<target ref="id33"/>
+			<label kind="guard" x="-688" y="-161">reached_target == 2</label>
+			<label kind="synchronisation" x="-569" y="-178">find!</label>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id34"/>
+			<label kind="synchronisation" x="-493" y="-136">target_position?</label>
+			<label kind="assignment" x="-467" y="-102">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id33"/>
+			<label kind="select" x="-731" y="-221">b_id : fbid_t</label>
+			<label kind="guard" x="-782" y="-272">mission_count != 2</label>
+			<label kind="synchronisation" x="-884" y="-255">mission_complete[bot_seq[b_id]]?</label>
+			<label kind="assignment" x="-807" y="-289">t := 0, mission_count++</label>
+			<nail x="-637" y="-204"/>
+			<nail x="-637" y="-280"/>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id27"/>
+			<label kind="guard" x="-510" y="-229">mission_count == 2</label>
+			<label kind="assignment" x="-509" y="-246">switch_role()</label>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id32"/>
+			<label kind="select" x="-263" y="-59">b_id : fbid_t</label>
+			<label kind="guard" x="-306" y="-8">f_sync_count != 2</label>
+			<label kind="synchronisation" x="-331" y="-25">f_sync[bot_seq[b_id]]!</label>
+			<label kind="assignment" x="-297" y="-42">f_sync_count++</label>
+			<nail x="-178" y="8"/>
+			<nail x="-119" y="8"/>
+			<nail x="-119" y="-110"/>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id31"/>
+			<label kind="synchronisation" x="-340" y="-102">survey_area[l_bot_id]?</label>
+			<label kind="assignment" x="-280" y="-127">t := 0</label>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id32"/>
+			<label kind="guard" x="-93" y="-102">w_count==2</label>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id30"/>
+			<label kind="select" x="170" y="-85">f_id : fbid_t</label>
+			<label kind="guard" x="170" y="-68">w_count != 2</label>
+			<label kind="synchronisation" x="170" y="-34">activate_f[bot_seq[f_id]]!</label>
+			<label kind="assignment" x="170" y="-51">w_count++</label>
+			<nail x="42" y="-8"/>
+			<nail x="161" y="-8"/>
+			<nail x="161" y="-110"/>
+		</transition>
 		<transition>
 			<source ref="id29"/>
-			<target ref="id25"/>
-			<label kind="synchronisation" x="-501" y="-204">mission_complete?</label>
-			<label kind="assignment" x="-501" y="-187">t := 0, switch_role()</label>
+			<target ref="id28"/>
+			<label kind="guard" x="-178" y="-187">t &gt; 5 &amp;&amp; f_count != 2</label>
+			<nail x="-127" y="-195"/>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id30"/>
+			<label kind="guard" x="59" y="-153">t &gt; 5 &amp;&amp; f_count == 2</label>
+			<label kind="synchronisation" x="59" y="-170">begin[l_bot_id]!</label>
+			<label kind="assignment" x="59" y="-136">bot_index := 0</label>
 		</transition>
 		<transition>
 			<source ref="id28"/>
 			<target ref="id29"/>
-			<label kind="synchronisation" x="-170" y="-93">wait[f_bot_id]!</label>
+			<label kind="select" x="34" y="-289">b_id : fbid_t</label>
+			<label kind="guard" x="-51" y="-238">t &gt; 5</label>
+			<label kind="synchronisation" x="-59" y="-272">follow_bots[bot_seq[b_id]]!</label>
+			<label kind="assignment" x="-59" y="-289">f_count++</label>
+			<nail x="42" y="-246"/>
 		</transition>
 		<transition>
 			<source ref="id27"/>
 			<target ref="id28"/>
-			<label kind="guard" x="0" y="-161">t &gt; 5</label>
-			<label kind="synchronisation" x="59" y="-161">begin[l_bot_id]!</label>
-		</transition>
-		<transition>
-			<source ref="id26"/>
-			<target ref="id27"/>
-			<label kind="guard" x="-51" y="-238">t &gt; 5</label>
-			<label kind="synchronisation" x="-59" y="-272">follow_bots[f_bot_id]!</label>
-			<nail x="42" y="-246"/>
-		</transition>
-		<transition>
-			<source ref="id25"/>
-			<target ref="id26"/>
 			<label kind="guard" x="-323" y="-238">t &gt; 10</label>
 			<label kind="synchronisation" x="-331" y="-272">move_bots[l_bot_id]!</label>
-			<label kind="assignment" x="-263" y="-238">t := 0</label>
+			<label kind="assignment" x="-263" y="-238">t := 0, init_sys()</label>
 		</transition>
 	</template>
 	<system>// Place template instantiations here.
-leader0 = leader_role(bot1_leader_id);
-follower0 = follower_role(bot1_leader_id);
-leader1 = leader_role(bot2_leader_id);
-follower1 = follower_role(bot2_leader_id);
-c0 = coordinate(bot1_leader_id);
-c1 = coordinate(bot2_leader_id);
-su0 = survey_role(bot1_leader_id);
-su1 = survey_role(bot2_leader_id);
-d0 = detect_role(bot1_leader_id);
-d1 = detect_role(bot2_leader_id);
+// Role initialization for bot 0
+leader0 = leader_role(bot0_leader_id);
+follower0 = follower_role(bot0_leader_id);
+c0 = coordinate(bot0_leader_id);
+su0 = survey_role(bot0_leader_id);
+d0 = detect_role(bot0_leader_id);
+
+// Role initialization of bot 1
+leader1 = leader_role(bot1_leader_id);
+follower1 = follower_role(bot1_leader_id);
+c1 = coordinate(bot1_leader_id);
+su1 = survey_role(bot1_leader_id);
+d1 = detect_role(bot1_leader_id);
+
+// Role initialization of bot 2
+leader2 = leader_role(bot2_leader_id);
+follower2 = follower_role(bot2_leader_id);
+c2 = coordinate(bot2_leader_id);
+su2 = survey_role(bot2_leader_id);
+d2 = detect_role(bot2_leader_id);
 
 
 // List one or more processes to be composed into a system.
-system start, leader0, follower0, leader1, follower1, c0, c1, su0, su1, d0, d1;
+system start, leader0, follower0, c0, su0, d0, leader1, follower1, c1, su1, d1,
+        leader2, follower2, c2, su2, d2;
     </system>
 	<queries>
 		<query>
@@ -394,7 +545,7 @@ system start, leader0, follower0, leader1, follower1, c0, c1, su0, su1, d0, d1;
 			<comment>/* Ensure that the system is deadlock free */</comment>
 		</query>
 		<query>
-			<formula>A[] not (leader0.survey and follower1.target_area)</formula>
+			<formula>A[] not (leader0.survey and follower1.arrived_at_target)</formula>
 			<comment>/* The Follower does not reach the inspection area unless instructed by leader */</comment>
 		</query>
 		<query>
@@ -406,7 +557,7 @@ system start, leader0, follower0, leader1, follower1, c0, c1, su0, su1, d0, d1;
 			<comment></comment>
 		</query>
 		<query>
-			<formula>A[] follower1.target_area imply follower1.t &lt;= 70</formula>
+			<formula>A[] follower1.arrived_at_target imply follower1.t &lt;= 70</formula>
 			<comment>/* The follower bot must be at the target area for 70 seconds */</comment>
 		</query>
 		<query>
